@@ -1,9 +1,9 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use pingora_core::prelude::*;
 use pingora_core::server::Server;
-use pingora_load_balancing::{selection::RoundRobin, LoadBalancer};
+use pingora_load_balancing::{health_check, selection::RoundRobin, LoadBalancer};
 use pingora_proxy::{ProxyHttp, Session};
 struct Lb(Arc<LoadBalancer<RoundRobin>>);
 
@@ -45,16 +45,20 @@ impl ProxyHttp for Lb {
 
 fn main() {
     // create upstream Service
-    let upstreams =
-        Arc::new(LoadBalancer::try_from_iter(["127.0.0.1:3000", "127.0.0.1:3001"]).unwrap());
+    let mut upstreams =
+        LoadBalancer::try_from_iter(["127.0.0.1:3000", "127.0.0.1:3001"]).unwrap();
 
     // TODO: create background healthcheck
+
+    let hc = health_check::TcpHealthCheck::new();
+    upstreams.set_health_check(hc);
+    upstreams.health_check_frequency = Some(Duration::from_secs(1));
 
     // create https server => that will listen the incomming request
     let mut lb_server = Server::new(None).unwrap();
 
     // create proxy instance
-    let mut lb = pingora_proxy::http_proxy_service(&lb_server.configuration, Lb(upstreams));
+    let mut lb = pingora_proxy::http_proxy_service(&lb_server.configuration, Lb(Arc::new(upstreams)));
     // set the lb port
     lb.add_tcp("0.0.0.0:6789");
 
