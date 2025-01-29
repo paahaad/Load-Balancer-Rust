@@ -1,0 +1,11 @@
+[package]
+name = "pingora-lb"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1.85"
+pingora-core = "0.4.0"
+pingora-http = "0.4.0"
+pingora-load-balancing = "0.4.0"
+pingora-proxy = "0.4.0"
